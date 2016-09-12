@@ -36,6 +36,8 @@ module.exports = function(b, opts = {}) {
 		}
 		log(`Extracting ${file}`);
 
+		log(`${transforms.length} transformers`);
+
 
 		//We need to apply the transforms
 		const transformStream = transforms
@@ -59,13 +61,18 @@ module.exports = function(b, opts = {}) {
 		return through.obj(function (chunk, enc, cb) {
 			log(`Stripping ${file}`);
 			this.push("");
-			log(`Applying transformations to ${file}`);
-			transformStream
-				.push(chunk);
-			transformStream.push(null);
+			log(`Creating readable stream for ${file}`);
+			const readable = new stream.Readable({
+				read() {
+					log(`Applying transformations to ${file}`);
+					this.push(chunk);
+					this.push(null);
+				}
+			});
+			const out = readable.pipe(transformStream);
 
-			transformStream.on('end', cb);
-			transformStream.on('error', cb);
+			out.on('end', cb);
+			out.on('error', cb);
 		}, (cb) =>{
 			log(`Transformation for ${file} done`);
 			cb();
