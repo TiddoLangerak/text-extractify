@@ -78,7 +78,7 @@ module.exports = function(b, opts = {}) {
 			cb();
 		});
 
-	});
+	}, { global });
 
 
 	function updatePipeline() {
