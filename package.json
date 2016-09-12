@@ -1,0 +1,30 @@
+{
+  "name": "text-extractify",
+  "version": "0.0.1",
+  "main": "out/index.js",
+  "author": "Tiddo Langerak <tiddolangerak@gmail.com> (https://github.com/TiddoLangerak/)",
+  "license": "MIT",
+  "description": "Browserify plugin to extract text into standalone files",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TiddoLangerak/text-extractify.git"
+  },
+  "bugs": {
+    "url": "https://github.com/TiddoLangerak/text-extractify/issues"
+  },
+  "homepage": "https://github.com/TiddoLangerak/text-extractify#readme",
+  "devDependencies": {
+    "babel-cli": "^6.14.0",
+    "babel-preset-es2015": "^6.14.0",
+    "babel-preset-stage-3": "^6.11.0"
+  },
+  "scripts": {
+    "build": "babel src -d out",
+    "watch": "npm run build -- -w",
+    "prepublish": "npm run build"
+  },
+  "dependencies": {
+    "debug": "^2.2.0",
+    "through2": "^2.0.1"
+  }
+}
