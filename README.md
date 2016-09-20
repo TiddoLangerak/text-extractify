@@ -1,11 +1,14 @@
 Browserify plugin to extract text into standalone files
 
+In order to extract text from a file the file should be transformed into a JS module that doesn't `require` anything and exports the text as `module.exports`. Files transformed with [stringify](https://www.npmjs.com/package/stringify) are suitable to be used with `text-extractify`.
+
 ## Usage
 
 ```javascript
 import extractify from 'text-extractify';
 
 browserify(entry, opts)
+	.transform(stringify(['.css']))
 	.plugin(extractify, opts)
 	.bundle();
 ```
@@ -14,34 +17,19 @@ browserify(entry, opts)
 
 - `dest` - Output filename for the extracted file
 - `[exts=[]]` - List of extensions of files that should be extracted.
-- `[opts.transforms=[]]` - List of transforms factories
-                           that should be applied to the file contents. This follows the
-                           same signature as browserify transforms, but these transforms should
-                           return content for the extracted file instead of Javascript. (So
-                           normal browserify transforms most likely will not give you the result
-                           you want)
-- `[global=false]` Whether to apply the extract logic globally or locally.
 
 ### Complete example
 ```javascript
 import extractify from 'text-extractify';
+import stringify from 'stringify';
+import lessify from 'node-lessify';
 
 browserify(entry, opts)
+	.transform(stringify(['.css']))
+	.transform(lessify, { textMode : true })
 	.plugin(extractify, {
 		exts : ['less', 'css'],
-		global : true,
 		dest : 'style.css',
-		transforms : [
-			file => through.obj(function(chunk, enc, cb) {
-				less.render(chunk.toString(), lessOptions, (err, result) => {
-					if (err) {
-						cb(err);
-					} else {
-						cb(result.css);
-					}
-				});
-			})
-		]
 	})
 	.bundle();
 ```

@@ -3,6 +3,7 @@ import through from 'through2';
 import fs from 'fs';
 import debug from 'debug';
 import stream from 'stream';
+import vm from 'vm';
 
 const log = debug('text-extractify');
 
@@ -20,8 +21,6 @@ const log = debug('text-extractify');
 module.exports = function(b, opts = {}) {
 	const { exts = [], transforms = [], global = false, dest } = opts;
 
-	const cache = new Map();
-
 	/**
 	 * Determines if this file should be processed by text-extractify
 	 */
@@ -30,73 +29,28 @@ module.exports = function(b, opts = {}) {
 		return exts.includes(ext);
 	}
 
-	b.transform(file => {
-		if (!shouldProcess(file)) {
-			return through.obj();
-		}
-		log(`Extracting ${file}`);
-
-		log(`${transforms.length} transformers`);
-
-
-		//We need to apply the transforms
-		const transformStream = transforms
-			.map(t => t(file))
-			.reduce((stream, transform) => stream.pipe(transform), through.obj());
-
-		//NOTE: we can't chain this with the expression above: the result of this
-		//expression is a writeStream, to which we can't push.
-		transformStream.pipe(new stream.Writable({
-				write(chunk, enc, cb) {
-					log(`Transformations applied to ${file}`);
-					cache.set(file, chunk);
-					cb();
-				}
-			}));
-
-
-		//We do want to keep the files in the bundle, such that requires work, but
-		//we need to strip the content from it. We therefore replace it with the
-		//empty string.
-		return through.obj(function (chunk, enc, cb) {
-			log(`Stripping ${file}`);
-			this.push("");
-			log(`Creating readable stream for ${file}`);
-			const readable = new stream.Readable({
-				read() {
-					log(`Applying transformations to ${file}`);
-					this.push(chunk);
-					this.push(null);
-				}
-			});
-			const out = readable.pipe(transformStream);
-
-			out.on('end', cb);
-			out.on('error', cb);
-		}, (cb) =>{
-			log(`Transformation for ${file} done`);
-			cb();
-		});
-
-	}, { global });
-
-
 	function updatePipeline() {
-		const files = [];
 		log(`Injecting collector into the pipeline`);
+		let chunks = [];
 		b.pipeline.get('pack').unshift(through.obj(function(chunk, enc, cb) {
 			if (shouldProcess(chunk.file)) {
-				files.push(chunk.file);
+				const sandbox = {
+					module : { }
+				};
+				try {
+					vm.runInNewContext(chunk.source, sandbox);
+				} catch (e) {
+					throw new Error(`Could not extract ${chunk.file}. Please make sure your file is properly transformed into a JS module that exports a string`);
+				}
+				chunks.push(sandbox.module.exports);
+				chunk.source = '';
 			}
 			this.push(chunk);
 			cb();
 		}, function(cb) {
 			log(`Combining files`);
-			const result = files
-				//FIXME: we have this filter for non-globally applied text extractions.
-				//Better would be to actually check if this is a local file
-				.filter(file => cache.has(file))
-				.map(file => cache.get(file))
+			const result = chunks
+				.filter(chunk => chunk)
 				.join('\n');
 			log(`Writing to ${dest}`);
 			fs.writeFile(dest, result, 'utf8', cb);
