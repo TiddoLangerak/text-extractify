@@ -1,6 +1,6 @@
 {
   "name": "text-extractify",
-  "version": "0.0.3",
+  "version": "0.1.0",
   "main": "out/index.js",
   "author": "Tiddo Langerak <tiddolangerak@gmail.com> (https://github.com/TiddoLangerak/)",
   "license": "MIT",
